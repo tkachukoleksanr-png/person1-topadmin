@@ -2,3 +2,4 @@
 nginx/.htpasswd
 certbot/
 wireguard/
+wordpress/wp-config.php

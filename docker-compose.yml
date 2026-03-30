@@ -7,6 +7,8 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     restart: unless-stopped
+    networks:
+      - wp-network
 
   wordpress:
     image: wordpress:php8.2-fpm-alpine
@@ -22,6 +24,8 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      - wp-network
 
   nginx:
     image: nginx:alpine
@@ -41,6 +45,8 @@ services:
     depends_on:
       - wordpress
     restart: unless-stopped
+    networks:
+      - wp-network
 
   # Автоматичне оновлення SSL
   certbot:
@@ -51,6 +57,40 @@ services:
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Kyiv
+      - SERVERURL=${SERVER_NAME}
+      - SERVERPORT=51820
+      - PEERS=1 
+      - PEERDNS=auto
+      - INTERNAL_SUBNET=10.13.13.0 
+      - ALLOWEDIPS=0.0.0.0/0 
+    volumes:
+      - ./wireguard:/config
+      - /lib/modules:/lib/modules 
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+    networks:
+      - wp-network
+
 volumes:
   db_data:
   wp_data:
+
+networks:
+  wp-network:
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
+
